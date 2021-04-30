@@ -41,11 +41,28 @@ directly available from the file itself it should be set to None for cleanup lat
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from ..generic import DataFile
 
 
+def small_numbers(cell):
+    """Deal with the <5 and np issue in these tables on ingest"""
+
+    if cell == '< 5':
+        return 4
+
+    elif cell == '< 10':
+        return 7
+
+    elif cell == 'np':
+        return 0
+
+    else:
+        return cell
+
 def ingest(file: DataFile):
-    source_data = pd.read_excel(file.filepath, header=2, skipfooter=5, engine='openpyxl')
+    source_data = pd.read_excel(file.filepath, header=2, skipfooter=5, engine='openpyxl',
+                                converters={col: small_numbers for col in range(3,48)})
     source_data[source_data.columns[0]].ffill(inplace=True)
     source_data[0:1] = source_data[0:1].ffill(axis='columns')
 
@@ -56,26 +73,28 @@ def ingest(file: DataFile):
         gender = [source_data[column].values[0]] * num_lines
         current_duties_classification = source_data[source_data.columns[0]][2:]
         source_name = source_data[source_data.columns[1]][2:]
-        count = source_data[column][2:]
+        counts = source_data[column][2:]
         long_df = long_df.append(pd.DataFrame(dict(year=year,
                                                    gender=gender,
                                                    current_duties_classification=current_duties_classification,
                                                    source_name=source_name,
-                                                   count=count)))
+                                                   counts=counts)))
 
     long_df['lower_name'] = long_df.source_name.str.lower()
     long_df.lower_name = long_df.lower_name.str.replace('the ', '')
     long_df.lower_name = long_df.lower_name.str.replace(',', '')
+    long_df.current_duties_classification = long_df.current_duties_classification.str.lower()
+    long_df.gender = long_df.gender.str.lower()
     category_types = ['current_duties_classification', 'gender']
     category_values = long_df[category_types].apply(list, axis='columns')
     source_count_type = file.table.split('_')[0]
-    out_df = pd.DataFrame(dict(year=long_df.year,
+    out_df = pd.DataFrame(dict(year=long_df.year.astype(int, errors='ignore'),
                                source_institution_id=long_df.lower_name,
                                source_institution_name=long_df.source_name,
                                source=[file.source] * len(long_df),
                                source_category_type=[category_types] * len(long_df),
                                source_category_value=category_values,
-                               count=long_df['counts'],
+                               counts=long_df['counts'].astype(int, errors='ignore'),
                                source_count_type=[source_count_type] * len(long_df)))
 
     return out_df

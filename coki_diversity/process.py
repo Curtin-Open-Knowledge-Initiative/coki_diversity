@@ -18,14 +18,16 @@ import logging
 import os
 import re
 
+from google.cloud import bigquery
+import pydata_google_auth
 import pandas as pd
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Optional
 from types import ModuleType
-from coki_diversity.process.walker import Walker
-from coki_diversity.process.normalise import normalise, fix_years
-
-logging.basicConfig(filename='../logs/ingest.log', level=logging.DEBUG)
+from process.walker import Walker
+from process.normalise import normalise, fix_years
+from process.combine import load_files, calculate_percentage
+from utils.loaders import make_json
 
 
 def process_input_files(input_directory: Union[Path, str],
@@ -44,7 +46,7 @@ def process_input_files(input_directory: Union[Path, str],
         logging.info(f'Source: {datafile.source} Table: {datafile.table}, Year: {datafile.year}')
         filename = Path(f'{datafile.source}_{datafile.year}.hd5')
         with pd.HDFStore(output_directory / filename) as store:
-            if skip_processed and (datafile.table in store.keys()):
+            if skip_processed and (f'/{datafile.table}' in store.keys()):
                 logging.info(f'...file already processed. Skipping. Set skip_processed to False to re-ingest')
                 continue
 
@@ -64,40 +66,80 @@ def normalise_ingested_files(ingested_directory: Union[Path, str],
     ingested_directory = Path(ingested_directory)
     output_directory = Path(output_directory)
 
+    logging.info('Starting normalisation run \n\n')
+
     w = Walker(ingested_directory,
                source_modules=source_modules)
 
     for ingested_file in w.walk(stage='ingested'):
-        if ingested_file.source not in ['us_ipeds']:
-             continue
-        if int(ingested_file.year) != 2007:
-            continue
-        out_df = pd.DataFrame()
+
+        filename = Path(f'{ingested_file.source}_{ingested_file.year}.csv')
+        logging.info(f'Loading file: {filename}')
+        filepath = output_directory / filename
+        if filepath.is_file() and skip_processed:
+            out_df = pd.read_csv(filepath)
+            logging.info(f'...{filename} has been previously processed')
+        else:
+            out_df = pd.DataFrame()
+            logging.info(f'...{filename} was not previously processed')
         temp_df = pd.DataFrame()
         filter_list = w.mapping.get(ingested_file.source)['filter_list']
         id_map = w.mapping.get(ingested_file.source)['id_map']
 
         with pd.HDFStore(ingested_file.filepath) as store:
+            if len(store.keys()) == 0:
+                continue
             for table in store.keys():
                 ingested = store[table]
                 ingested = fix_years(ingested)
                 ingested['id'] = ingested.source_institution_id.map(id_map)
                 temp_df = temp_df.append(ingested)
             for filters in filter_list:
-                out_df[filters.name] = normalise(temp_df, filters=filters)
+                if filters.name not in out_df.columns:
+                    logging.info(f'...running {filters.name}')
+                    out_df[filters.name] = normalise(temp_df, filters=filters)
 
-        filename = Path(f'{ingested_file.source}_{ingested_file.year}.csv')
-        out_df.to_csv(output_directory/filename)
+        out_df.to_csv(filepath)
 
+
+def combine_files(normalised_directory: Union[str, Path],
+                  output_directory: Union[str, Path],
+                  filename: Union[str, Path],
+                  skip_processed: Optional[bool] = False):
+    logging.info(f'Combining files in {normalised_directory}')
+    normalised_directory = Path(normalised_directory)
+    output_directory = Path(output_directory)
+    filename = Path(filename)
+    outpath = output_directory / filename
+    if outpath.is_file() and skip_processed:
+        return
+
+    df = load_files(normalised_directory)
+    pdf = calculate_percentage(df,
+                         numerators=['academic_women_count',
+                                     'academic_indigenous_count',
+                                     'academic_white_count',
+                                     'academic_indigenous_women_count'],
+                         denominator='academic_total_count')
+
+    pdf.to_csv(output_directory / filename)
 
 
 if __name__ == '__main__':
-    source_modules = ['au_det', 'sa_hemis', 'uk_hesa', 'us_ipeds']
-    # process_input_files('../data/input',
-    #                      source_modules=source_modules,
-    #                      output_directory='../data/ingested',
-    #                      skip_processed=True)
+    logging.basicConfig(filename='../logs/ingest.log', level=logging.DEBUG)
+    logging.info('Starting a processing run...\n\n')
+    source_modules = ['au_det','au_indigenous']#'nz_moe',  'au_det', 'sa_hemis', 'uk_hesa', 'us_ipeds', ]
+    process_input_files('../data/input',
+                        source_modules=source_modules,
+                        output_directory='../data/ingested',
+                        skip_processed=False)
 
     normalise_ingested_files('../data/ingested',
                              source_modules=source_modules,
-                             output_directory='../data/normalised')
+                             output_directory='../data/normalised',
+                             skip_processed=False)
+
+    combine_files('../data/normalised',
+                  '../data/combined',
+                  filename='combined.csv',
+                  skip_processed=False)

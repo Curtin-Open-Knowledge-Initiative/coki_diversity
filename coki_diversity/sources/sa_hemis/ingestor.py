@@ -41,6 +41,7 @@ directly available from the file itself it should be set to None for cleanup lat
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from ..generic import DataFile
 
 
@@ -77,12 +78,21 @@ def ingest(file: DataFile):
         org_df.dropna(axis='index', thresh=3, inplace=True)
         org_df.dropna(axis='columns', thresh=5, inplace=True)
 
+        for col in org_df.columns:
+            if not is_numeric_dtype(org_df[col]):
+                org_df[col] = org_df[col].str.lower()
+                org_df[col] = org_df[col].str.lstrip()
+        level_0_list = [col.lower() for col in org_df.columns.levels[0]]
+        level_1_list = [col.lower() for col in org_df.columns.levels[1]]
+        org_df.columns.set_levels(level_0_list, level=0, inplace=True)
+        org_df.columns.set_levels(level_1_list, level=1, inplace=True)
+
         if table_number == '3.3':
             var_name = ['category_type', 'category_value']
             first_column_label = 'personnel_category'
             if file.year < 2010:
-                org_df['GENDER', 'MALE'] = org_df['RACE', 'MALE']
-                org_df.drop(columns=('RACE', 'MALE'), inplace=True)
+                org_df['gender', 'male'] = org_df['race', 'male']
+                org_df.drop(columns=('race', 'male'), inplace=True)
         elif table_number == '3.5':
             var_name = ['rank', 'gender']
             first_column_label = 'age'
@@ -97,13 +107,17 @@ def ingest(file: DataFile):
         long_df = long_df.append(melted)
 
     if table_number == '3.3':
-        long_df.replace({'category_type': {'Unnamed: 1_level_0': 'RACE',
-                                           'Unnamed: 2_level_0': 'RACE'}}, inplace=True)
+        long_df.replace({'category_type': {'unnamed: 1_level_0': 'race',
+                                           'unnamed: 2_level_0': 'race'}}, inplace=True)
+        long_df.category_type = long_df.category_type.str.lower()
         source_category_types = long_df.category_type.apply(lambda x: ['personnel_category', x])
         source_category_values = long_df[['personnel_category', 'category_value']].apply(list, axis='columns')
 
     elif table_number == '3.5':
         source_category_types = ['age', 'rank', 'gender']
+        for typ in source_category_types:
+            long_df[typ] = long_df[typ].str.lower()
+            long_df[typ] = long_df[typ].str.lstrip()
         source_category_values = long_df[source_category_types].apply(list, axis='columns')
         source_category_types = [source_category_types] * len(long_df)
 
@@ -113,6 +127,6 @@ def ingest(file: DataFile):
                                source=[file.source] * len(long_df),
                                source_category_type=source_category_types,
                                source_category_value=source_category_values,
-                               count=long_df['counts'])
+                               counts=long_df['counts'].astype(int, errors='ignore'))
                           )
     return out_df

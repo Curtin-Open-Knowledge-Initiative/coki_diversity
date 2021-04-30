@@ -21,8 +21,8 @@ from pathlib import Path
 from importlib import import_module
 from typing import Union, Optional, Dict
 
-import coki_diversity.sources as sources
-from coki_diversity.sources.generic import DataFile
+import sources as sources
+from sources.generic import DataFile
 
 
 class Walker:
@@ -95,7 +95,7 @@ class Walker:
         id_map_path = Path(id_map_path)
 
         for module in source_modules:
-            fullname = f'coki_diversity.sources.{module}'
+            fullname = f'sources.{module}'
             source_module = import_module(fullname)
             map_path = sorted(id_map_path.glob(f'**/{module[0:2]}_id_map.json'))[0]
             with open(map_path) as f:

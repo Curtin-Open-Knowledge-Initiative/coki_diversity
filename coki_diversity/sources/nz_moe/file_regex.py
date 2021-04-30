@@ -16,4 +16,4 @@
 
 import re
 
-file_regex = re.compile('^(?P<year>19|20\d{2})_staff_(?P<table>[\w\s_]*).(xls|xlsx)$', re.IGNORECASE)
+file_regex = re.compile('^NZ (?P<table>0321_Universities_Workforce_Data_gender_ethnicity) (?P<year>2000-2017).xlsx$', re.IGNORECASE)

@@ -41,6 +41,7 @@ directly available from the file itself it should be set to None for cleanup lat
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from ..generic import DataFile
 
 
@@ -56,6 +57,9 @@ def ingest(file: DataFile):
         cleaned_column_names.update(dict(unitid='unit_id'))
         source_data.rename(columns=cleaned_column_names, inplace=True)
         source_data['occupation_filled'] = source_data.occupation.ffill()
+        for col in source_data.columns:
+            if not is_numeric_dtype(source_data[col]):
+                source_data[col] = source_data[col].str.lower()
 
         category_types = ['occupation_filled', 'gender', 'ethnicity']
         melt_id_vars = ['unit_id', 'institution_name', 'occupation', 'occupation_filled', 'gender']
@@ -68,6 +72,9 @@ def ingest(file: DataFile):
             engine = 'openpyxl'
             source_data = pd.read_excel(file.filepath, engine=engine)
         source_data.drop(columns=['IDX_HR', 'IDX_S'], errors='ignore', inplace=True)
+        for col in source_data.columns:
+            if not is_numeric_dtype(source_data[col]):
+                source_data[col] = source_data[col].str.lower()
         category_types = ['occupation_and_status', 'gender_and_ethnicity']
         # Split the column names to remove column prefix
         occupation_column_name = source_data.columns[3]
@@ -90,7 +97,7 @@ def ingest(file: DataFile):
                                source=[file.source] * len(melted),
                                source_category_type=[category_types] * len(melted),
                                source_category_value=category_values,
-                               count=melted['counts'])
+                               counts=melted['counts'].astype(int, errors='ignore'))
                           )
     if 'year' in melted.columns:
         out_df['year'] = melted.year

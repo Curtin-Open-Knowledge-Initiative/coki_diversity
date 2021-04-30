@@ -26,40 +26,34 @@ __init__ file to avoid errors and this should be noted in the main documentation
 
 from ..generic import FileFilter, CategoryFilter
 
-sa_hemis_academic_women_10_19 = FileFilter(source='sa_hemis',
-                                           years=range(2010, 2020),
-                                           reqs={'personnel_category': ['   1.1 INSTRUCTION/RESEARCH PROFESSIONAL'],
-                                                 'GENDER': ['FEMALE'],
+sa_hemis_academic_women_01_19 = FileFilter(source='sa_hemis',
+                                           years=range(2001, 2020),
+                                           reqs={'personnel_category': ['1.1 instruction/research professional'],
+                                                 'gender': ['female'],
                                                  }
                                            )
 
-sa_hemis_academic_women_01_09 = FileFilter(source='sa_hemis',
-                                           years=range(2001, 2010),
-                                           reqs={'personnel_category': ['   1.1 Instruction/Research Professional'],
-                                                 'GENDER': ['FEMALE'],
+sa_hemis_academic_total_01_19 = FileFilter(source='sa_hemis',
+                                           years=range(2001, 2020),
+                                           reqs={'personnel_category': ['1.1 instruction/research professional'],
+                                                 'race': ['total'],
                                                  }
                                            )
 
-sa_hemis_academic_total_10_19 = FileFilter(source='sa_hemis',
-                                           years=range(2010, 2020),
-                                           reqs={'personnel_category': ['   1.1 INSTRUCTION/RESEARCH PROFESSIONAL'],
-                                                 'RACE': ['TOTAL'],
-                                                 }
-                                           )
-
-sa_hemis_academic_total_01_09 = FileFilter(source='sa_hemis',
-                                           years=range(2001, 2010),
-                                           reqs={'personnel_category': ['   1.1 Instruction/Research Professional'],
-                                                 'RACE': ['TOTAL'],
-                                                 }
-                                           )
+sa_hemis_academic_white_01_19 = FileFilter(source='sa_hemis',
+                                           years=range(2001, 2020),
+                                           reqs={'personnel_category': ['1.1 instruction/research professional'],
+                                                 'race': ['white']})
 
 academic_total_count = CategoryFilter(name='academic_total_count',
-                                      filefilters=[sa_hemis_academic_total_01_09, sa_hemis_academic_total_10_19])
+                                      filefilters=[sa_hemis_academic_total_01_19])
 academic_women_count = CategoryFilter(name='academic_women_count',
-                                      filefilters=[sa_hemis_academic_women_01_09, sa_hemis_academic_women_10_19])
+                                      filefilters=[sa_hemis_academic_women_01_19])
+academic_white_count = CategoryFilter(name='academic_white_count',
+                                      filefilters=[sa_hemis_academic_white_01_19])
 
 if (len(academic_total_count.filefilters) == 0) or (len(academic_women_count.filefilters) == 0):
     raise NotImplementedError('Implementation of academic_total_count and academic_women_count is required')
 
-filter_list = [academic_total_count, academic_women_count]
+filter_list = [academic_total_count, academic_women_count,
+               academic_white_count]

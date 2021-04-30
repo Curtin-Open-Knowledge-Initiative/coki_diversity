@@ -24,19 +24,44 @@ __init__ file to avoid errors and this should be noted in the main documentation
 
 """
 
-from ..generic import FileFilter
+from ..generic import FileFilter, CategoryFilter
 
-specific_filter_startyr_endyr = FileFilter(source='source_name',  # Must correspond to name of source package
-                                           years=range(2010, 2020),  # Note that range is non-inclusive for the
-                                           # final year so this would cover 2010-2019
-                                           reqs={'category_name': ['values', 'to', 'include'],
-                                                     'another_category': ['All']  # all values of this category should
-                                                                                  # be combined
-                                                     }
-                                           )
+academic_indigenous_08_13_hc = FileFilter(source='au_indigenous',
+                                          years=range(2008, 2014),
+                                          count_type='headcount',
+                                          reqs={'total': ['persons']}
+                                          )
 
-academic_total_count = [] # Add relevant filters to this list
-academic_women_count = [] # Add relevant filters to this list
+academic_indigenous_14_14_hc = FileFilter(source='au_indigenous',
+                                          years=range(2014, 2015),
+                                          count_type='headcount',
+                                          reqs={'total fte': ['persons']}
+                                          )
 
-if (len(academic_total_count) == 0) or (len(academic_women_count) == 0):
-    raise NotImplementedError('Implementation of academic_total_count and academic_women_count is required')
+academic_indigenous_15_20_hc = FileFilter(source='au_indigenous',
+                                          years=range(2015, 2021),
+                                          count_type='headcount',
+                                          reqs={'total': ['persons']}
+                                          )
+
+academic_indigenous_women_14_20_hc = FileFilter(source='au_indigenous',
+                                                years=range(2014, 2021),
+                                                count_type='headcount',
+                                                reqs={'gender': ['females']}
+                                                )
+
+academic_indigenous_women_08_13_hc = FileFilter(source='au_indigenous',
+                                                years=range(2008, 2014),
+                                                count_type='headcount',
+                                                reqs={'total': ['females']}
+                                                )
+
+academic_indigenous_count = CategoryFilter(name='academic_indigenous_count',
+                                           filefilters=[academic_indigenous_15_20_hc,
+                                                        academic_indigenous_14_14_hc,
+                                                        academic_indigenous_08_13_hc])
+academic_indigenous_women_count = CategoryFilter(name='academic_indigenous_women_count',
+                                                 filefilters=[academic_indigenous_women_14_20_hc,
+                                                              academic_indigenous_women_08_13_hc])
+
+filter_list = [academic_indigenous_count, academic_indigenous_women_count]

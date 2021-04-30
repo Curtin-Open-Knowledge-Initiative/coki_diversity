@@ -29,21 +29,21 @@ from ..generic import FileFilter, CategoryFilter
 au_det_women_academic = FileFilter(source='au_det',
                                    years=range(2000, 2021),
                                    reqs={
-                                           'current_duties_classification': ['Above Senior Lecturer',
-                                                                             'Senior lecturer (Level C)',
-                                                                             'Lecturer (Level B)',
-                                                                             'Below lecturer (Level A)'
+                                           'current_duties_classification': ['above senior lecturer',
+                                                                             'senior lecturer (level c)',
+                                                                             'lecturer (level b)',
+                                                                             'below lecturer (level a)'
                                                                              ],
-                                           'gender': ['Female']
+                                           'gender': ['female']
                                        })
 
 au_det_total_academic = FileFilter(source='au_det',
                                    years=range(2000, 2021),
                                    reqs={
-                                           'current_duties_classification': ['Above Senior Lecturer',
-                                                                             'Senior lecturer (Level C)',
-                                                                             'Lecturer (Level B)',
-                                                                             'Below lecturer (Level A)'
+                                           'current_duties_classification': ['above senior lecturer',
+                                                                             'senior lecturer (level c)',
+                                                                             'lecturer (level b)',
+                                                                             'below lecturer (level a)'
                                                                              ]
                                        })
 

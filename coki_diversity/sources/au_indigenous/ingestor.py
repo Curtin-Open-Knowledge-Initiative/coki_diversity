@@ -44,9 +44,101 @@ import pandas as pd
 from ..generic import DataFile
 
 
+def small_numbers(cell):
+    """Deal with the <5 and np issue in these tables on ingest"""
+
+    if (cell == '< 5') or (cell == '<5'):
+        return 4
+
+    elif (cell == '< 10') or (cell == '<10'):
+        return 7
+
+    elif cell == 'np':
+        return 0
+
+    else:
+        return cell
+
+def to_list(element):
+    return [element]
+
 def ingest(file: DataFile):
-    raise NotImplementedError
+    if file.year < 2008:
+        return
 
-    ## Build data ingest process here ##
+    header = [2, 3]
+    skiprows = 0
+    skipfooter = 2
+    sheet_map = {'1': 'fte',
+                 '2': 'headcount'}
 
+    if file.year > 2019:
+        columns = 12
+        institution_col = 1
+
+    elif file.year > 2013:
+        columns = 11
+        institution_col = 0
+
+    elif file.year > 2007:
+        columns = 17
+        institution_col = 0
+
+    else:
+        return
+
+    if file.filepath.suffix == '.xlsx':
+        engine = 'openpyxl'
+    else:
+        engine = None
+
+    converters = {col: small_numbers for col in range(1, columns)}
+    source_sheets = pd.read_excel(file.filepath,
+                                  header=header,
+                                  skiprows=skiprows,
+                                  skipfooter=skipfooter,
+                                  sheet_name=['1', '2'],
+                                  converters=converters,
+                                  engine=engine)
+
+    long_df = pd.DataFrame()
+    for sheet_name in source_sheets.keys():
+        if sheet_name in ['1', '2']:
+            sheet_df = source_sheets.get(sheet_name)
+            sheet_df.dropna(axis='columns', thresh=3, inplace=True)
+            sheet_df.dropna(axis='index', thresh=2, inplace=True)
+            if file.year == 2020:
+                sheet_df.drop(columns=[sheet_df.columns[0]], inplace=True)
+
+            level_0_list = [col.lower() for col in sheet_df.columns.levels[0]]
+            level_1_list = [col.lower() for col in sheet_df.columns.levels[1]]
+            sheet_df.columns.set_levels(level_0_list, level=0, inplace=True)
+            sheet_df.columns.set_levels(level_1_list, level=1, inplace=True)
+
+            melted = sheet_df.melt(id_vars=[sheet_df.columns[0]],
+                                 value_vars=[c for c in sheet_df.columns[1:]],
+                                 var_name=['source_category_types', 'source_category_values'],
+                                 value_name='counts')
+
+            melted.rename(columns={sheet_df.columns[0]: 'source_name'}, inplace=True)
+            melted['source_count_type'] = [sheet_map[sheet_name]] * len(melted)
+            melted.source_category_types = melted.source_category_types.apply(to_list)
+            melted.source_category_values = melted.source_category_values.apply(to_list)
+
+            long_df = long_df.append(melted)
+
+    long_df['lower_name'] = long_df.source_name.str.lower()
+    long_df.lower_name = long_df.lower_name.str.replace('the ', '')
+    long_df.lower_name = long_df.lower_name.str.replace(',', '')
+    out_df = pd.DataFrame(dict(year=[file.year] * len(long_df),
+                               source_institution_id=long_df.lower_name,
+                               source_institution_name=long_df.lower_name,
+                               source=[file.source] * len(long_df),
+                               source_category_type=long_df.source_category_types,
+                               source_category_value=long_df.source_category_values,
+                               counts=long_df['counts'].astype(int, errors='ignore'),
+                               source_count_type=long_df.source_count_type
+                               )
+                          )
+    
     return out_df

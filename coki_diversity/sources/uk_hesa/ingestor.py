@@ -16,6 +16,7 @@
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from ..generic import DataFile
 
 
@@ -42,6 +43,8 @@ def ingest(file: DataFile):
         source_data.rename(columns=cleaned_column_names, inplace=True)
 
         category_types = ['terms_of_employment', 'contract_levels', 'atypical_marker', 'contract_marker', 'category']
+        for typ in category_types:
+            source_data[typ] = source_data[typ].str.lower()
         category_values = np.column_stack((source_data[c] for c in category_types)).tolist()
         category_types.remove('category')
         temp_category_types = [category_types[:]] * len(source_data)
@@ -55,7 +58,7 @@ def ingest(file: DataFile):
                                    source=[file.source] * len(source_data),
                                    source_category_type=source_category_types,
                                    source_category_value=category_values,
-                                   count=source_data.number))
+                                   counts=source_data.number.astype(int, errors='ignore')))
 
     elif file.year > 2009:
         skiprows = None
@@ -68,6 +71,15 @@ def ingest(file: DataFile):
                          inplace=True,
                          errors='ignore')
         source_data.dropna(axis='index', inplace=True)
+
+        for col in source_data.columns:
+            if not is_numeric_dtype(source_data[col]):
+                source_data[col] = source_data[col].str.lower()
+        level_0_list = [col.lower() for col in source_data.columns.levels[0]]
+        level_1_list = [col.lower() for col in source_data.columns.levels[1]]
+        source_data.columns.set_levels(level_0_list, level=0, inplace=True)
+        source_data.columns.set_levels(level_1_list, level=1, inplace=True)
+
         id_vars = [source_data.columns[1], source_data.columns[3]]
         value_vars = list(source_data.columns[4:])
 
@@ -86,6 +98,6 @@ def ingest(file: DataFile):
                                    source=[file.source] * len(melted),
                                    source_category_type=source_category_types,
                                    source_category_value=source_category_values,
-                                   counts=melted['counts']))
+                                   counts=melted['counts'].astype(int, errors='ignore')))
 
     return out_df
