@@ -45,6 +45,7 @@ def ingest(file: DataFile):
         category_types = ['terms_of_employment', 'contract_levels', 'atypical_marker', 'contract_marker', 'category']
         for typ in category_types:
             source_data[typ] = source_data[typ].str.lower()
+        source_data['terms_of_employment'] = source_data['terms_of_employment'].str.replace('/', '-')
         category_values = np.column_stack((source_data[c] for c in category_types)).tolist()
         category_types.remove('category')
         temp_category_types = [category_types[:]] * len(source_data)

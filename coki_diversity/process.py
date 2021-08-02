@@ -27,7 +27,7 @@ from types import ModuleType
 from process.walker import Walker
 from process.normalise import normalise, fix_years
 from process.combine import load_files, calculate_percentage
-from utils.loaders import make_json
+from process.bigquery import make_json
 
 
 def process_input_files(input_directory: Union[Path, str],
@@ -128,18 +128,25 @@ def combine_files(normalised_directory: Union[str, Path],
 if __name__ == '__main__':
     logging.basicConfig(filename='../logs/ingest.log', level=logging.DEBUG)
     logging.info('Starting a processing run...\n\n')
-    source_modules = ['au_det','au_indigenous']#'nz_moe',  'au_det', 'sa_hemis', 'uk_hesa', 'us_ipeds', ]
-    process_input_files('../data/input',
-                        source_modules=source_modules,
-                        output_directory='../data/ingested',
-                        skip_processed=False)
+    source_modules = ['au_det','au_indigenous', 'nz_moe',  'au_det', 'sa_hemis', 'uk_hesa', 'us_ipeds', ]
+    # process_input_files('../data/input',
+    #                     source_modules=source_modules,
+    #                     output_directory='../data/ingested',
+    #                     skip_processed=False)
+    #
+    # normalise_ingested_files('../data/ingested',
+    #                          source_modules=source_modules,
+    #                          output_directory='../data/normalised',
+    #                          skip_processed=False)
+    #
+    # combine_files('../data/normalised',
+    #               '../data/combined',
+    #               filename='combined.csv',
+    #               skip_processed=False)
 
-    normalise_ingested_files('../data/ingested',
-                             source_modules=source_modules,
-                             output_directory='../data/normalised',
-                             skip_processed=False)
-
-    combine_files('../data/normalised',
-                  '../data/combined',
-                  filename='combined.csv',
-                  skip_processed=False)
+    make_json('../data/ingested',
+              suffix='.hd5',
+              outpath='../data/bq_json/bq_json.json',
+              source_modules=source_modules,
+              write_local=True,
+              write_gbq=False)

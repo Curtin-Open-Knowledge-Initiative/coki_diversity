@@ -2,8 +2,11 @@ import logging
 import json
 import pandas as pd
 from pathlib import Path
-from process.normalise import fix_years
-from process.walker import Walker
+
+from google.cloud import bigquery
+
+from coki_diversity.process.normalise import fix_years
+from coki_diversity.process.walker import Walker
 
 
 def map_categories(row):
@@ -60,11 +63,9 @@ def make_json(dir,
                     out_df.dropna(inplace=True)
 
                     if write_local:
-                        out_df.to_json(outfile,
-                                       orient='records',
-                                       lines=True)
-                        outfile.write('\n')
-
+                        j = out_df.to_dict(orient='records')
+                        if len(j) > 10:
+                            [outfile.write(f'{json.dumps(r)}\n') for r in j]
 
                     if write_gbq and (len(out_df) > 0):
                         rows_to_insert = out_df.to_dict(orient='records')[0:100]
@@ -88,10 +89,10 @@ if __name__ == '__main__':
     project = 'coki-scratch-space'
     table = 'test.diversity'
 
-    client = bigquery.Client()
+    #client = bigquery.Client()
 
     make_json(dir=dir,
               suffix=suffix,
               source_modules=source_modules,
               outpath='../../tests/fixtures/utils/test_json.json',
-              client=client)
+              write_local=True)
